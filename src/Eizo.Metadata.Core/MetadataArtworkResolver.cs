@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Eizo.Metadata.Core;
 
 public sealed record MetadataArtworkRequest(
@@ -45,6 +47,95 @@ public interface IMetadataArtworkProvider
     Task<MetadataArtwork?> ResolveArtworkAsync(
         MetadataArtworkRequest request,
         CancellationToken cancellationToken = default);
+}
+
+public sealed class CachedMetadataArtworkProvider :
+    IMetadataArtworkProvider
+{
+    private static readonly JsonSerializerOptions JsonOptions =
+        new(JsonSerializerDefaults.Web);
+
+    private readonly IMetadataArtworkProvider _inner;
+    private readonly IMetadataCache _cache;
+    private readonly TimeSpan _ttl;
+
+    public CachedMetadataArtworkProvider(
+        IMetadataArtworkProvider inner,
+        IMetadataCache cache,
+        TimeSpan? ttl = null)
+    {
+        _inner = inner ??
+            throw new ArgumentNullException(nameof(inner));
+        _cache = cache ??
+            throw new ArgumentNullException(nameof(cache));
+        _ttl = ttl ?? TimeSpan.FromDays(14);
+    }
+
+    public string Name => _inner.Name;
+
+    public async Task<MetadataArtwork?> ResolveArtworkAsync(
+        MetadataArtworkRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        request = request.Normalize();
+        var key = BuildKey(request);
+
+        var payload = await _cache
+            .GetAsync(key, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (payload is not null)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<MetadataArtwork>(
+                    payload,
+                    JsonOptions);
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        var result = await _inner
+            .ResolveArtworkAsync(
+                request,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result is not null)
+        {
+            await _cache
+                .SetAsync(
+                    key,
+                    JsonSerializer.Serialize(
+                        result,
+                        JsonOptions),
+                    DateTimeOffset.UtcNow.Add(_ttl),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return result;
+    }
+
+    private string BuildKey(
+        MetadataArtworkRequest request)
+    {
+        var titles = string.Join(
+            "\u001f",
+            request.Titles);
+
+        var externalIds = string.Join(
+            "\u001f",
+            request.ExternalIds
+                .OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(static pair => $"{pair.Key}={pair.Value}"));
+
+        return $"artwork|{Name}|{request.SubjectKind}|{request.ContentKind}|{request.Year}|{request.PreferredLanguage}|{titles}|{externalIds}";
+    }
 }
 
 public sealed class MetadataArtworkResolver
