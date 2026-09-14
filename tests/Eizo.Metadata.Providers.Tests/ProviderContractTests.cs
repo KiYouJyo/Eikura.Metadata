@@ -369,6 +369,69 @@ public sealed class ProviderContractTests
     }
 
     [Fact]
+    public async Task Tmdb_GetEpisodesMapsExactSeasonIdentityAndArtwork()
+    {
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.Contains(
+                "/3/tv/1396/season/1",
+                request.RequestUri!.AbsolutePath,
+                StringComparison.Ordinal);
+
+            return Json("""
+                {
+                  "id": 3572,
+                  "name": "Season 1",
+                  "overview": "The first season.",
+                  "air_date": "2008-01-20",
+                  "poster_path": "/season1.jpg",
+                  "season_number": 1,
+                  "episodes": [
+                    {
+                      "id": 62085,
+                      "episode_number": 1,
+                      "name": "Pilot",
+                      "overview": "Walter White begins his transformation.",
+                      "air_date": "2008-01-20",
+                      "still_path": "/pilot.jpg"
+                    }
+                  ]
+                }
+                """);
+        });
+
+        var provider = new TmdbMetadataProvider(
+            new HttpClient(handler),
+            new TmdbMetadataProviderOptions(
+                "secret-token",
+                "en-US"));
+
+        var episodes = await provider.GetEpisodesAsync(
+            new MetadataProviderItemId(
+                "tmdb",
+                "1396",
+                MetadataSubjectKind.Series),
+            seasonNumber: 1,
+            TestContext.Current.CancellationToken);
+
+        var episode = Assert.Single(episodes);
+        Assert.Equal("62085", episode.ProviderEpisodeId);
+        Assert.Equal("3572", episode.ProviderSeasonId);
+        Assert.Equal(1, episode.SeasonNumber);
+        Assert.Equal("Season 1", episode.SeasonTitle);
+        Assert.Equal("The first season.", episode.SeasonOverview);
+        Assert.Equal(new DateOnly(2008, 1, 20), episode.SeasonAirDate);
+        Assert.Contains(
+            "/season1.jpg",
+            episode.SeasonPosterUrl,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "/pilot.jpg",
+            episode.ThumbnailUrl,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task AniListArtwork_MapsBannerAndCoverForAnime()
     {
         var handler = new RecordingHandler(request =>

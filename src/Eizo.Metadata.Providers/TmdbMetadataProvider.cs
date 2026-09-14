@@ -303,7 +303,18 @@ public sealed class TmdbMetadataProvider :
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!document.RootElement.TryGetProperty("episodes", out var items) ||
+            var root = document.RootElement;
+            var providerSeasonId = root
+                .GetInt32("id")
+                ?.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture);
+            var seasonTitle = root.GetString("name");
+            var seasonOverview = root.GetString("overview");
+            var seasonAirDate = root.GetDateOnly("air_date");
+            var seasonPosterUrl =
+                BuildImageUrl(root.GetString("poster_path"));
+
+            if (!root.TryGetProperty("episodes", out var items) ||
                 items.ValueKind != JsonValueKind.Array)
             {
                 continue;
@@ -331,7 +342,14 @@ public sealed class TmdbMetadataProvider :
                         JsonProviderHelpers.EmptyAliases()),
                     item.GetString("overview"),
                     item.GetDateOnly("air_date"),
-                    BuildImageUrl(item.GetString("still_path"))));
+                    BuildImageUrl(item.GetString("still_path")))
+                {
+                    ProviderSeasonId = providerSeasonId,
+                    SeasonTitle = seasonTitle,
+                    SeasonOverview = seasonOverview,
+                    SeasonAirDate = seasonAirDate,
+                    SeasonPosterUrl = seasonPosterUrl,
+                });
             }
         }
 
