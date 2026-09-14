@@ -11,7 +11,9 @@ public sealed record TmdbMetadataProviderOptions(
     string BaseAddress = "https://api.themoviedb.org/3/",
     string ImageBaseAddress = "https://image.tmdb.org/t/p/w780");
 
-public sealed class TmdbMetadataProvider : IMetadataProvider
+public sealed class TmdbMetadataProvider :
+    IMetadataProvider,
+    IMetadataArtworkProvider
 {
     private const string ProviderName = "tmdb";
     private readonly HttpClient _httpClient;
@@ -32,6 +34,79 @@ public sealed class TmdbMetadataProvider : IMetadataProvider
     }
 
     public string Name => ProviderName;
+
+    public async Task<MetadataArtwork?> ResolveArtworkAsync(
+        MetadataArtworkRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.ExternalIds.TryGetValue(
+                ProviderName,
+                out var directId) &&
+            !string.IsNullOrWhiteSpace(directId) &&
+            request.SubjectKind != MetadataSubjectKind.Unknown)
+        {
+            var subject = await GetSubjectAsync(
+                    new MetadataProviderItemId(
+                        ProviderName,
+                        directId,
+                        request.SubjectKind),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (subject is not null &&
+                (!string.IsNullOrWhiteSpace(
+                     subject.Artwork.BackdropUrl) ||
+                 !string.IsNullOrWhiteSpace(
+                     subject.Artwork.PosterUrl)))
+            {
+                return subject.Artwork;
+            }
+        }
+
+        var recognitionKind = request.SubjectKind switch
+        {
+            MetadataSubjectKind.Movie => MediaKind.Movie,
+            MetadataSubjectKind.Series => MediaKind.SeriesEpisode,
+            _ => MediaKind.Unknown,
+        };
+
+        var candidates = await SearchAsync(
+                new MetadataSearchRequest(
+                    request.Titles,
+                    request.Year,
+                    recognitionKind,
+                    SeasonNumber: null,
+                    EpisodeNumber: null,
+                    request.PreferredLanguage,
+                    Limit: 8),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        var best = candidates
+            .Select(candidate =>
+                (Candidate: candidate,
+                 Score: ScoreArtworkIdentity(
+                     request,
+                     candidate)))
+            .OrderByDescending(static item => item.Score)
+            .ThenBy(static item => item.Candidate.ProviderRank)
+            .FirstOrDefault();
+
+        if (best.Candidate is null ||
+            best.Score < 0.62)
+        {
+            return null;
+        }
+
+        var resolved = await GetSubjectAsync(
+                best.Candidate.Id,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return resolved?.Artwork;
+    }
 
     public async Task<IReadOnlyList<MetadataSearchCandidate>> SearchAsync(
         MetadataSearchRequest request,
@@ -261,6 +336,105 @@ public sealed class TmdbMetadataProvider : IMetadataProvider
         }
 
         return episodes;
+    }
+
+    private static double ScoreArtworkIdentity(
+        MetadataArtworkRequest request,
+        MetadataSearchCandidate candidate)
+    {
+        var requestTitles = request.Titles
+            .Where(static title =>
+                !string.IsNullOrWhiteSpace(title))
+            .Select(NormalizeArtworkTitle)
+            .Where(static title => title.Length >= 2)
+            .ToArray();
+
+        var candidateTitles = candidate.Titles
+            .EnumerateAll()
+            .Where(static title =>
+                !string.IsNullOrWhiteSpace(title))
+            .Select(NormalizeArtworkTitle)
+            .Where(static title => title.Length >= 2)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var titleScore = 0d;
+        foreach (var left in requestTitles)
+        {
+            foreach (var right in candidateTitles)
+            {
+                if (left == right)
+                {
+                    titleScore = Math.Max(
+                        titleScore,
+                        0.85);
+                    continue;
+                }
+
+                if (left.Length >= 4 &&
+                    right.Length >= 4 &&
+                    (left.Contains(
+                         right,
+                         StringComparison.Ordinal) ||
+                     right.Contains(
+                         left,
+                         StringComparison.Ordinal)))
+                {
+                    var shorter = Math.Min(
+                        left.Length,
+                        right.Length);
+                    var longer = Math.Max(
+                        left.Length,
+                        right.Length);
+
+                    titleScore = Math.Max(
+                        titleScore,
+                        0.62 + 0.18 *
+                        ((double)shorter / longer));
+                }
+            }
+        }
+
+        var yearScore = 0d;
+        if (request.Year is { } requestedYear &&
+            candidate.Year is { } candidateYear)
+        {
+            var delta = Math.Abs(
+                requestedYear - candidateYear);
+
+            yearScore = delta switch
+            {
+                0 => 0.15,
+                1 => 0.07,
+                _ => -0.12,
+            };
+        }
+
+        return Math.Clamp(
+            titleScore + yearScore,
+            0d,
+            1d);
+    }
+
+    private static string NormalizeArtworkTitle(
+        string value)
+    {
+        var normalized = value
+            .Normalize(
+                System.Text.NormalizationForm.FormKC)
+            .ToUpperInvariant();
+
+        var builder =
+            new System.Text.StringBuilder(
+                normalized.Length);
+
+        foreach (var character in normalized)
+        {
+            if (char.IsLetterOrDigit(character))
+                builder.Append(character);
+        }
+
+        return builder.ToString();
     }
 
     private async Task<int[]> GetSeasonNumbersAsync(
