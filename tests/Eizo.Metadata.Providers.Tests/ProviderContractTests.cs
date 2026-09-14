@@ -381,8 +381,20 @@ public sealed class ProviderContractTests
                 .GetAwaiter()
                 .GetResult();
 
-            Assert.Contains("\"search\":\"葬送的芙莉莲\"", body, StringComparison.Ordinal);
-            Assert.Contains("bannerImage", body, StringComparison.Ordinal);
+            using var requestJson =
+                System.Text.Json.JsonDocument.Parse(body);
+            Assert.Equal(
+                "葬送的芙莉莲",
+                requestJson.RootElement
+                    .GetProperty("variables")
+                    .GetProperty("search")
+                    .GetString());
+            Assert.Contains(
+                "bannerImage",
+                requestJson.RootElement
+                    .GetProperty("query")
+                    .GetString(),
+                StringComparison.Ordinal);
 
             return Json("""
                 {
