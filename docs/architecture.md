@@ -125,3 +125,19 @@ scan / WebDAV listing
 
 A slow or unavailable provider must not delay opening the media library or playing a
 known media item.
+
+
+## Artwork enrichment layer
+
+Artwork enrichment is intentionally separate from identity resolution. A resolved
+subject can keep its existing provider metadata while missing visual assets are
+filled by ordered `IMetadataArtworkProvider` implementations.
+
+The initial provider order is:
+
+1. AniList for animation `bannerImage` and cover artwork.
+2. TMDB for backdrop/poster fallback when a TMDB read token is available.
+
+`MetadataArtworkResolver` only fills missing artwork fields and isolates provider
+failures. `CachedMetadataArtworkProvider` reuses the existing metadata cache so
+episode-by-episode library scans do not repeat the same remote artwork lookup.
