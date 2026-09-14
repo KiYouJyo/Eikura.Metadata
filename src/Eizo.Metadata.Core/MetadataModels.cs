@@ -563,7 +563,18 @@ public sealed record MetadataEpisode(
     MetadataTitles Titles,
     string? Overview,
     DateOnly? AirDate,
-    string? ThumbnailUrl);
+    string? ThumbnailUrl)
+{
+    public string? ProviderSeasonId { get; init; }
+
+    public string? SeasonTitle { get; init; }
+
+    public string? SeasonOverview { get; init; }
+
+    public DateOnly? SeasonAirDate { get; init; }
+
+    public string? SeasonPosterUrl { get; init; }
+}
 
 public sealed record MetadataProviderError(
     string Provider,

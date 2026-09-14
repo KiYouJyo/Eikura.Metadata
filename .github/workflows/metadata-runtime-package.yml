@@ -20,6 +20,7 @@ on:
       - "codex/metadata-runtime-0.2.18"
       - "codex/metadata-runtime-0.2.19"
       - "codex/metadata-runtime-0.2.20"
+      - "codex/metadata-runtime-0.2.22"
   workflow_dispatch:
 
 permissions:
@@ -55,7 +56,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $version = '0.2.20'
+          $version = '0.2.22'
           $root = Join-Path $env:RUNNER_TEMP "Eizo.Metadata.Runtime-v$version-x64"
           $bin = Join-Path $root 'bin'
           $buildRoot = Join-Path $env:RUNNER_TEMP 'metadata-module-build'
@@ -132,28 +133,28 @@ jobs:
       - name: Upload Metadata runtime assets
         uses: actions/upload-artifact@v4
         with:
-          name: Eizo-Metadata-runtime-v0.2.20-${{ github.sha }}
+          name: Eizo-Metadata-runtime-v0.2.22-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/Eizo.Recognition.Runtime-v0.2.20-x64.zip
+            ${{ runner.temp }}/Eizo.Recognition.Runtime-v0.2.22-x64.zip
             ${{ runner.temp }}/eizo-recognition-release.json
             ${{ runner.temp }}/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish Metadata runtime v0.2.20
+      - name: Publish Metadata runtime v0.2.22
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view v0.2.20 >/dev/null 2>&1; then
-            echo 'Eizo.Metadata v0.2.20 already exists; leaving the published release immutable.'
+          if gh release view v0.2.22 >/dev/null 2>&1; then
+            echo 'Eizo.Metadata v0.2.22 already exists; leaving the published release immutable.'
             exit 0
           fi
-          gh release create v0.2.20 \
+          gh release create v0.2.22 \
             --target "${GITHUB_SHA}" \
-            --title "Eizo.Metadata v0.2.20" \
-            --notes "Library classification release. v0.2.20 adds ABI-safe Animation / LiveAction content hints from Bangumi subject types and TMDB genre evidence so the Eizo library can separate anime, live-action series and movies without title guessing." \
-            "${RUNNER_TEMP}/Eizo.Recognition.Runtime-v0.2.20-x64.zip" \
+            --title "Eizo.Metadata v0.2.22" \
+            --notes "TMDB season identity release. v0.2.22 preserves the exact TMDB season ID, title, overview, air date and season poster alongside each resolved episode while keeping the stable 0.1 host ABI." \
+            "${RUNNER_TEMP}/Eizo.Recognition.Runtime-v0.2.22-x64.zip" \
             "${RUNNER_TEMP}/eizo-recognition-release.json" \
             "${RUNNER_TEMP}/SHA256SUMS.txt"
