@@ -368,6 +368,139 @@ public sealed class ProviderContractTests
         Assert.Equal(MetadataContentKind.Animation, subject.ContentKind);
     }
 
+    [Fact]
+    public async Task AniListArtwork_MapsBannerAndCoverForAnime()
+    {
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("graphql.anilist.co", request.RequestUri!.Host);
+
+            var body = request.Content!
+                .ReadAsStringAsync()
+                .GetAwaiter()
+                .GetResult();
+
+            using var requestJson =
+                System.Text.Json.JsonDocument.Parse(body);
+            Assert.Equal(
+                "葬送的芙莉莲",
+                requestJson.RootElement
+                    .GetProperty("variables")
+                    .GetProperty("search")
+                    .GetString());
+            Assert.Contains(
+                "bannerImage",
+                requestJson.RootElement
+                    .GetProperty("query")
+                    .GetString(),
+                StringComparison.Ordinal);
+
+            return Json("""
+                {
+                  "data": {
+                    "Page": {
+                      "media": [
+                        {
+                          "id": 154587,
+                          "idMal": 52991,
+                          "title": {
+                            "romaji": "Sousou no Frieren",
+                            "english": "Frieren: Beyond Journey's End",
+                            "native": "葬送のフリーレン"
+                          },
+                          "synonyms": ["葬送的芙莉莲"],
+                          "startDate": { "year": 2023 },
+                          "bannerImage": "https://img.anilist.co/banner/frieren.jpg",
+                          "coverImage": {
+                            "extraLarge": "https://img.anilist.co/cover/frieren.jpg",
+                            "large": null
+                          },
+                          "popularity": 500000
+                        }
+                      ]
+                    }
+                  }
+                }
+                """);
+        });
+
+        var provider = new AniListArtworkProvider(
+            new HttpClient(handler));
+
+        var artwork = await provider.ResolveArtworkAsync(
+            new MetadataArtworkRequest(
+                ["葬送的芙莉莲", "葬送のフリーレン"],
+                2023,
+                MetadataSubjectKind.Series,
+                MetadataContentKind.Animation,
+                "zh-CN",
+                new Dictionary<string, string>()),
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(artwork);
+        Assert.Equal(
+            "https://img.anilist.co/banner/frieren.jpg",
+            artwork.BackdropUrl);
+        Assert.Equal(
+            "https://img.anilist.co/cover/frieren.jpg",
+            artwork.PosterUrl);
+    }
+
+    [Fact]
+    public async Task TmdbArtwork_UsesDirectTmdbIdForBackdrop()
+    {
+        var handler = new RecordingHandler(request =>
+        {
+            Assert.Contains(
+                "/3/tv/42509",
+                request.RequestUri!.AbsolutePath,
+                StringComparison.Ordinal);
+
+            return Json("""
+                {
+                  "id": 42509,
+                  "name": "Steins;Gate",
+                  "original_name": "STEINS;GATE",
+                  "overview": "",
+                  "first_air_date": "2011-04-06",
+                  "number_of_episodes": 24,
+                  "poster_path": "/poster.jpg",
+                  "backdrop_path": "/backdrop.jpg",
+                  "genres": [
+                    { "id": 16, "name": "Animation" }
+                  ],
+                  "external_ids": {}
+                }
+                """);
+        });
+
+        var provider = new TmdbMetadataProvider(
+            new HttpClient(handler),
+            new TmdbMetadataProviderOptions(
+                "secret-token",
+                "zh-CN"));
+
+        var artwork = await provider.ResolveArtworkAsync(
+            new MetadataArtworkRequest(
+                ["Steins;Gate"],
+                2011,
+                MetadataSubjectKind.Series,
+                MetadataContentKind.Animation,
+                "zh-CN",
+                new Dictionary<string, string>
+                {
+                    ["tmdb"] = "42509",
+                }),
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(artwork);
+        Assert.Contains(
+            "/backdrop.jpg",
+            artwork.BackdropUrl,
+            StringComparison.Ordinal);
+    }
+
     private static HttpResponseMessage Json(string json) =>
         new(HttpStatusCode.OK)
         {

@@ -7,11 +7,11 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
-    <VersionPrefix>0.2.20</VersionPrefix>
+    <VersionPrefix>0.2.21</VersionPrefix>
     <!-- Keep the managed ABI stable across compatible 0.1.x runtime updates. -->
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.2.20.0</FileVersion>
-    <InformationalVersion>0.2.20</InformationalVersion>
+    <FileVersion>0.2.21.0</FileVersion>
+    <InformationalVersion>0.2.21</InformationalVersion>
     <Authors>KiYouJyo</Authors>
     <RepositoryUrl>https://github.com/KiYouJyo/Eizo.Metadata</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
