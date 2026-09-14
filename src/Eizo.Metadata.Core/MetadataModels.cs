@@ -542,6 +542,14 @@ public sealed record MetadataSearchCandidate(
     public MetadataContentKind ContentKind { get; init; } = MetadataContentKind.Unknown;
 }
 
+public sealed record MetadataPersonCredit(
+    string ProviderPersonId,
+    string Name,
+    string? Role,
+    string? Department,
+    string? ProfileUrl,
+    int Order);
+
 public sealed record MetadataSubject(
     MetadataProviderItemId Id,
     MetadataTitles Titles,
@@ -552,6 +560,24 @@ public sealed record MetadataSubject(
     IReadOnlyDictionary<string, string> ExternalIds)
 {
     public MetadataContentKind ContentKind { get; init; } = MetadataContentKind.Unknown;
+
+    public IReadOnlyList<string> Genres { get; init; } = Array.Empty<string>();
+
+    public IReadOnlyList<string> ProductionCompanies { get; init; } = Array.Empty<string>();
+
+    public IReadOnlyList<string> OriginCountryCodes { get; init; } = Array.Empty<string>();
+
+    public int? RuntimeMinutes { get; init; }
+
+    public string? Status { get; init; }
+
+    public string? OriginalLanguage { get; init; }
+
+    public IReadOnlyList<MetadataPersonCredit> Cast { get; init; } =
+        Array.Empty<MetadataPersonCredit>();
+
+    public IReadOnlyList<MetadataPersonCredit> Crew { get; init; } =
+        Array.Empty<MetadataPersonCredit>();
 }
 
 public sealed record MetadataEpisode(

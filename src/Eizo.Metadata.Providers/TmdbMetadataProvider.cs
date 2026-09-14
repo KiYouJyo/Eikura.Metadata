@@ -215,7 +215,7 @@ public sealed class TmdbMetadataProvider :
         var segment = id.Kind == MetadataSubjectKind.Movie ? "movie" : "tv";
         using var message = CreateRequest(
             HttpMethod.Get,
-            $"{segment}/{Uri.EscapeDataString(id.Value)}?language={Uri.EscapeDataString(_options.Language)}&append_to_response=external_ids");
+            $"{segment}/{Uri.EscapeDataString(id.Value)}?language={Uri.EscapeDataString(_options.Language)}&append_to_response=external_ids,credits");
         using var response = await _httpClient
             .SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
@@ -264,6 +264,26 @@ public sealed class TmdbMetadataProvider :
             externalIds)
         {
             ContentKind = MapContentKind(root),
+            Genres = MapNamedArray(root, "genres"),
+            ProductionCompanies = MapNamedArray(
+                root,
+                "production_companies"),
+            OriginCountryCodes = MapOriginCountries(
+                root,
+                id.Kind),
+            RuntimeMinutes = MapRuntimeMinutes(
+                root,
+                id.Kind),
+            Status = root.GetString("status"),
+            OriginalLanguage = root.GetString("original_language"),
+            Cast = MapCredits(
+                root,
+                "cast",
+                "character"),
+            Crew = MapCredits(
+                root,
+                "crew",
+                "job"),
         };
     }
 
@@ -514,6 +534,120 @@ public sealed class TmdbMetadataProvider :
         {
             ContentKind = MapContentKind(item),
         };
+
+    private IReadOnlyList<MetadataPersonCredit> MapCredits(
+        JsonElement root,
+        string arrayName,
+        string roleProperty)
+    {
+        if (!root.TryGetProperty("credits", out var credits) ||
+            credits.ValueKind != JsonValueKind.Object ||
+            !credits.TryGetProperty(arrayName, out var items) ||
+            items.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<MetadataPersonCredit>();
+        }
+
+        var result = new List<MetadataPersonCredit>();
+        foreach (var item in items.EnumerateArray())
+        {
+            var id = item.GetInt32("id")?.ToString(
+                System.Globalization.CultureInfo.InvariantCulture);
+            var name = item.GetString("name");
+            if (string.IsNullOrWhiteSpace(id) ||
+                string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            result.Add(new MetadataPersonCredit(
+                id,
+                name,
+                item.GetString(roleProperty),
+                item.GetString("department"),
+                BuildImageUrl(item.GetString("profile_path")),
+                item.GetInt32("order") ?? result.Count));
+        }
+
+        return result
+            .OrderBy(static item => item.Order)
+            .ThenBy(static item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(40)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> MapNamedArray(
+        JsonElement root,
+        string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var items) ||
+            items.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        return items.EnumerateArray()
+            .Select(static item => item.GetString("name"))
+            .Where(static value => !string.IsNullOrWhiteSpace(value))
+            .Select(static value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<string> MapOriginCountries(
+        JsonElement root,
+        MetadataSubjectKind kind)
+    {
+        if (kind == MetadataSubjectKind.Series &&
+            root.TryGetProperty("origin_country", out var origin) &&
+            origin.ValueKind == JsonValueKind.Array)
+        {
+            return origin.EnumerateArray()
+                .Where(static item => item.ValueKind == JsonValueKind.String)
+                .Select(static item => item.GetString())
+                .Where(static value => !string.IsNullOrWhiteSpace(value))
+                .Select(static value => value!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        if (root.TryGetProperty("production_countries", out var countries) &&
+            countries.ValueKind == JsonValueKind.Array)
+        {
+            return countries.EnumerateArray()
+                .Select(static item => item.GetString("iso_3166_1"))
+                .Where(static value => !string.IsNullOrWhiteSpace(value))
+                .Select(static value => value!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static int? MapRuntimeMinutes(
+        JsonElement root,
+        MetadataSubjectKind kind)
+    {
+        if (kind == MetadataSubjectKind.Movie)
+            return root.GetInt32("runtime");
+
+        if (root.TryGetProperty("episode_run_time", out var runtimes) &&
+            runtimes.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in runtimes.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Number &&
+                    item.TryGetInt32(out var value) &&
+                    value > 0)
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
+    }
 
     private static MetadataContentKind MapContentKind(JsonElement item)
     {

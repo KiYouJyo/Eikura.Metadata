@@ -342,10 +342,39 @@ public sealed class ProviderContractTests
                   "release_date": "2001-07-20",
                   "poster_path": "/poster.jpg",
                   "backdrop_path": "/backdrop.jpg",
+                  "runtime": 125,
+                  "status": "Released",
+                  "original_language": "ja",
                   "genres": [
                     { "id": 16, "name": "Animation" },
                     { "id": 14, "name": "Fantasy" }
                   ],
+                  "production_companies": [
+                    { "id": 10342, "name": "Studio Ghibli" }
+                  ],
+                  "production_countries": [
+                    { "iso_3166_1": "JP", "name": "Japan" }
+                  ],
+                  "credits": {
+                    "cast": [
+                      {
+                        "id": 123,
+                        "name": "Rumi Hiiragi",
+                        "character": "Chihiro",
+                        "order": 0,
+                        "profile_path": "/rumi.jpg"
+                      }
+                    ],
+                    "crew": [
+                      {
+                        "id": 608,
+                        "name": "Hayao Miyazaki",
+                        "job": "Director",
+                        "department": "Directing",
+                        "profile_path": "/miyazaki.jpg"
+                      }
+                    ]
+                  },
                   "external_ids": {
                     "imdb_id": "tt0245429"
                   }
@@ -366,6 +395,25 @@ public sealed class ProviderContractTests
         Assert.Equal("tt0245429", subject.ExternalIds["imdb"]);
         Assert.Contains("/poster.jpg", subject.Artwork.PosterUrl, StringComparison.Ordinal);
         Assert.Equal(MetadataContentKind.Animation, subject.ContentKind);
+        Assert.Contains("Animation", subject.Genres);
+        Assert.Contains("Fantasy", subject.Genres);
+        Assert.Equal("Studio Ghibli", Assert.Single(subject.ProductionCompanies));
+        Assert.Equal("JP", Assert.Single(subject.OriginCountryCodes));
+        Assert.Equal(125, subject.RuntimeMinutes);
+        Assert.Equal("Released", subject.Status);
+        Assert.Equal("ja", subject.OriginalLanguage);
+
+        var cast = Assert.Single(subject.Cast);
+        Assert.Equal("123", cast.ProviderPersonId);
+        Assert.Equal("Rumi Hiiragi", cast.Name);
+        Assert.Equal("Chihiro", cast.Role);
+        Assert.Contains("/rumi.jpg", cast.ProfileUrl, StringComparison.Ordinal);
+
+        var crew = Assert.Single(subject.Crew);
+        Assert.Equal("608", crew.ProviderPersonId);
+        Assert.Equal("Hayao Miyazaki", crew.Name);
+        Assert.Equal("Director", crew.Role);
+        Assert.Equal("Directing", crew.Department);
     }
 
     [Fact]
