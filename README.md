@@ -1,6 +1,8 @@
-# Eizo.Metadata
+# Eikura Metadata
 
-Metadata and offline media-recognition infrastructure for **Eizo**.
+> Compatibility note: package IDs, assemblies, namespaces, and solution/project paths remain `Eizo.Metadata.*` in the 1.3.2 migration cycle so existing component-update and NuGet consumers remain compatible.
+
+Metadata and offline media-recognition infrastructure for **Eikura**.
 
 The repository is intentionally built in layers. The first deliverable is
 `Eizo.Metadata.Recognition`: a deterministic, offline parser that turns noisy media
@@ -50,13 +52,13 @@ docs/
 ## Dependency rule
 
 ```text
-Eizo
+Eikura
   |
   v
 Eizo.Metadata.Recognition
   ^
   |
-future Eizo.Metadata provider/orchestration projects
+future Eikura metadata provider/orchestration projects
 ```
 
 Recognition must remain provider-neutral and fully usable without network access.
@@ -106,7 +108,7 @@ Implemented so far:
 - repeatable CI benchmark artifacts for 1K / 10K / 100K scans;
 - current Ubuntu CI baseline: **59.5 ms / 603.6 ms / 2,789.3 ms** respectively.
 
-Recognition is now hardened enough for Stage 7 Eizo integration and metadata-provider
+Recognition is now hardened enough for Stage 7 Eikura integration and metadata-provider
 work to begin without expanding the Recognition dependency boundary.
 
 See [docs/recognition-plan.md](docs/recognition-plan.md) for the staged development

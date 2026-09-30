@@ -9,10 +9,10 @@
 
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>KiYouJyo</Authors>
-    <RepositoryUrl>https://github.com/KiYouJyo/Eizo.Metadata</RepositoryUrl>
+    <RepositoryUrl>https://github.com/KiYouJyo/Eikura.Metadata</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageProjectUrl>https://github.com/KiYouJyo/Eizo.Metadata</PackageProjectUrl>
-    <PackageTags>eizo;metadata;recognition;media;anime;drama</PackageTags>
+    <PackageProjectUrl>https://github.com/KiYouJyo/Eikura.Metadata</PackageProjectUrl>
+    <PackageTags>eikura;eizo;metadata;recognition;media;anime;drama</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>

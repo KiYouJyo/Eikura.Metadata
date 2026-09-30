@@ -3,6 +3,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>Eizo.Metadata.Recognition</AssemblyName>
     <RootNamespace>Eizo.Metadata.Recognition</RootNamespace>
-    <Description>Deterministic offline media filename and path recognition for Eizo.</Description>
+    <Description>Deterministic offline media filename and path recognition for Eikura.</Description>
   </PropertyGroup>
 </Project>
