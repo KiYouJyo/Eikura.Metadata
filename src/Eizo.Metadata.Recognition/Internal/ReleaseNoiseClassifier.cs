@@ -56,7 +56,8 @@ internal static class ReleaseNoiseClassifier
 
     internal static bool IsProviderMetadataTag(RecognitionToken token)
     {
-        if (!token.IsBracketed || token.Kind != TokenKind.BracketGroup)
+        if (!token.IsBracketed ||
+            token.Kind is not (TokenKind.BracketGroup or TokenKind.TechnicalGroup))
         {
             return false;
         }

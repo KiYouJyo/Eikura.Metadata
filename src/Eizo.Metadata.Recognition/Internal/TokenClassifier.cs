@@ -8,6 +8,7 @@ internal static class TokenClassifier
     {
         "WEB", "WEBDL", "WEBRIP", "BLURAY", "BDRIP", "BDREMUX", "HDTV",
         "DVDRIP", "REMUX", "BAHA", "NETFLIX", "NF", "AMZN", "CR", "ATX",
+        "IQIYI", "YOUKU", "TENCENT", "DISNEYPLUS", "BILIBILI",
     };
 
     private static readonly HashSet<string> VideoCodecs = new(StringComparer.Ordinal)
@@ -31,6 +32,13 @@ internal static class TokenClassifier
     {
         "ANI", "LILITHRAWS", "NCRAWS", "LOLIHOUSE", "REINFORCE", "MOOZZI2",
         "NEKOMOEKISSATEN", "DBDRAWS",
+    };
+
+    private static readonly HashSet<string> TechnicalQualifiers = new(StringComparer.Ordinal)
+    {
+        "NVENC", "MULTI", "SUB", "SUBS", "MULTISUB", "MULTISUBS", "DUAL",
+        "DUALAUDIO", "HDR", "HDR10", "HDR10PLUS", "DV", "DOVI", "MA10P",
+        "ASS", "SRT", "PGS",
     };
 
     internal static TokenKind Classify(string value, bool bracketed)
@@ -85,6 +93,11 @@ internal static class TokenClassifier
         if (Languages.Contains(key))
         {
             return TokenKind.Language;
+        }
+
+        if (TechnicalQualifiers.Contains(key))
+        {
+            return TokenKind.TechnicalGroup;
         }
 
         if (IsResolution(key))

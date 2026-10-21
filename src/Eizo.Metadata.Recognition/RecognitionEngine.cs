@@ -11,12 +11,21 @@ public sealed class RecognitionEngine : IRecognitionEngine
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var path = PathPreprocessor.Preprocess(request.Path);
+        var path = PathContextSanitizer.Sanitize(
+            PathPreprocessor.Preprocess(request.Path));
         var technicalSuffix = TechnicalSuffixAnalyzer.Analyze(path);
-        var episode = EpisodeExtractor.Extract(path);
-        var episodeTitle = EpisodeTitleExtractor.Extract(path, episode);
+        var episode = EpisodeBoundaryNormalizer.Normalize(
+            path,
+            EpisodeExtractor.Extract(path));
+        var episodeTitle = EpisodeTitleBoundaryResolver.Normalize(
+            path,
+            episode,
+            EpisodeTitleExtractor.Extract(path, episode));
         var domain = DomainClassifier.Classify(path);
-        var title = TitleExtractor.Extract(path, episode, domain, episodeTitle);
+        var title = TitleBoundaryNormalizer.Normalize(
+            path,
+            episode,
+            TitleExtractor.Extract(path, episode, domain, episodeTitle));
 
         var evidence = new List<RecognitionEvidence>(episode.Evidence);
         if (technicalSuffix is not null)
@@ -29,7 +38,9 @@ public sealed class RecognitionEngine : IRecognitionEngine
         evidence.AddRange(title.Evidence);
 
         var year = TryGetYear(path, technicalSuffix, evidence);
-        var mediaKind = ResolveMediaKind(episode, domain);
+        var mediaKindResolution = MediaKindResolver.Resolve(path, episode, domain);
+        evidence.AddRange(mediaKindResolution.Evidence);
+        var mediaKind = mediaKindResolution.MediaKind;
 
         var episodeNumber = episode.EpisodeNumber;
         var episodeEndNumber = episode.EpisodeEndNumber;
@@ -113,20 +124,6 @@ public sealed class RecognitionEngine : IRecognitionEngine
         }
 
         return result;
-    }
-
-    private static MediaKind ResolveMediaKind(
-        EpisodeExtractionResult episode,
-        DomainClassificationResult domain)
-    {
-        if (domain.MediaKind != MediaKind.Unknown)
-        {
-            return domain.MediaKind;
-        }
-
-        return episode.EpisodeNumber is null
-            ? MediaKind.Unknown
-            : MediaKind.SeriesEpisode;
     }
 
     private static int? TryGetYear(

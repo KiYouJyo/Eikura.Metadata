@@ -23,6 +23,7 @@ internal static class TechnicalSuffixAnalyzer
         {
             var candidate = tokens[i];
             if (!IsPotentialStart(candidate) ||
+                !CanStartSuffix(tokens, i) ||
                 !HasMeaningfulContentBefore(tokens, i) ||
                 CountStrongSignals(tokens, i) < 2)
             {
@@ -81,6 +82,36 @@ internal static class TechnicalSuffixAnalyzer
             TokenKind.AudioCodec or
             TokenKind.BitDepth or
             TokenKind.TechnicalGroup;
+
+    private static bool CanStartSuffix(
+        IReadOnlyList<RecognitionToken> tokens,
+        int index)
+    {
+        if (tokens[index].Kind != TokenKind.Year)
+        {
+            return true;
+        }
+
+        // Preserve an early title-like year only when another plausible year
+        // appears later before the technical tail, e.g. SAC_2045...2021.1080p.
+        // A normal release year followed by an episode marker remains the
+        // suffix boundary: Title 2021 第04話 1080p HDTV.
+        for (var i = index + 1; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (token.Kind == TokenKind.Year)
+            {
+                return false;
+            }
+
+            if (IsStrongSignal(token))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static int CountStrongSignals(
         IReadOnlyList<RecognitionToken> tokens,
