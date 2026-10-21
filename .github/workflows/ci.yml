@@ -75,7 +75,7 @@ jobs:
           }
 
       - name: Upload NuGet package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eizo-metadata-recognition-nuget-${{ github.sha }}
           path: artifacts/packages/*.nupkg
@@ -103,7 +103,7 @@ jobs:
         run: dotnet run --project benchmarks/Eizo.Metadata.Recognition.Benchmarks/Eizo.Metadata.Recognition.Benchmarks.csproj --configuration Release --no-restore -- --output artifacts/benchmarks
 
       - name: Upload benchmark baseline
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eizo-metadata-recognition-benchmark-${{ github.sha }}
           path: artifacts/benchmarks/*
